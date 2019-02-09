@@ -314,7 +314,7 @@ namespace compto {
 			return error;
 		}
 
-		private static uint ReadUInt(System.IO.FileStream s) {
+		private static uint ReadUInt(System.IO.Stream s) {
 			int b1 = s.ReadByte();
 			int b2 = s.ReadByte();
 			int b3 = s.ReadByte();
@@ -322,13 +322,10 @@ namespace compto {
 			return (uint)( b4 << 24 | b3 << 16 | b2 << 8 | b1 );
 		}
 
-		public static int DecodeFile(string @in, string @out, int raw, int version) {
-			uint inl, outl; int error = SUCCESS;
-			byte[] ind, outd; System.IO.FileStream fin, fout = null;
-
-			Console.Write("Decoding[{0:X2}] {1} -> {2}...", version, @in ?? "", @out ?? "");
-
-			fin = new System.IO.FileStream(@in, System.IO.FileMode.Open, System.IO.FileAccess.Read, System.IO.FileShare.Read);
+		public static int DecodeStream(System.IO.Stream fin, System.IO.Stream fout, int raw, int version) {
+			int error = SUCCESS;
+			uint inl, outl;
+			byte[] ind, outd;
 
 			if (raw != 0) {
 				inl = (uint)fin.Length;
@@ -347,15 +344,31 @@ namespace compto {
 
 			error = Decode(version, ind, inl, outd, ref outl);
 
-			if (@out != null) {
-				fout = new System.IO.FileStream(@out, System.IO.FileMode.Create);
+			if (fout != null) {
 				fout.Write(outd, 0, (int)outl);
 			}
 
 		_cleanup:
 
 			outd = null;
-			ind  = null;
+			ind = null;
+
+			return error;
+		}
+
+		public static int DecodeFile(string @in, string @out, int raw, int version) {
+			int error = SUCCESS;
+			System.IO.FileStream fin, fout = null;
+
+			Console.Write("Decoding[{0:X2}] {1} -> {2}...", version, @in ?? "", @out ?? "");
+
+			fin = new System.IO.FileStream(@in, System.IO.FileMode.Open, System.IO.FileAccess.Read, System.IO.FileShare.Read);
+
+			if (@out != null) {
+				fout = new System.IO.FileStream(@out, System.IO.FileMode.Create);
+			}
+
+			error = DecodeStream(fin, fout, raw, version);
 
 			if (fout != null) fout.Close();
 			if (fin  != null) fin.Close();
@@ -365,7 +378,7 @@ namespace compto {
 			return error;
 		}
 
-		private static void WriteUInt(System.IO.FileStream s, uint v) {
+		private static void WriteUInt(System.IO.Stream s, uint v) {
 			byte b1 = (byte)(v & 0xFF);
 			byte b2 = (byte)((v >> 8) & 0xFF);
 			byte b3 = (byte)((v >> 16) & 0xFF);
@@ -376,9 +389,11 @@ namespace compto {
 			s.WriteByte(b4);
 		}
 
-		public static int EncodeFile(string @in, string @out, int raw, int version) {
-			uint inl, outl; int error = SUCCESS;
-			byte[] ind, outd; System.IO.FileStream fin = null, fout = null;
+		public static int EncodeStream(System.IO.Stream fin, System.IO.Stream fout, int raw, int version) {
+			int error = SUCCESS;
+			uint inl, outl;
+			byte[] ind, outd;
+
 			int eversion = 0;
 
 			if (version < 0) {
@@ -390,10 +405,6 @@ namespace compto {
 
 			//Console.WriteLine("{0}, {1}", version, eversion);
 
-			Console.Write("Encoding[{0:X2}] {1} -> {2}...", version, @in ?? "", @out ?? "");
-
-			fin = new System.IO.FileStream(@in, System.IO.FileMode.Open, System.IO.FileAccess.Read, System.IO.FileShare.Read);
-
 			inl = (uint)fin.Length; outl = ((inl * 9) / 8) + 10;
 
 			ind  = new byte[inl];
@@ -403,9 +414,7 @@ namespace compto {
 
 			error = Encode(eversion, ind, (int)inl, outd, ref outl);
 
-			if (@out != null) {
-				fout = new System.IO.FileStream(@out, System.IO.FileMode.Create);
-
+			if (fout != null) {
 				if (raw == 0) {
 					fout.WriteByte((byte)version);
 					WriteUInt(fout, outl);
@@ -415,15 +424,29 @@ namespace compto {
 				fout.Write(outd, 0, (int)outl);
 			}
 
-		_cleanup:
-
 			outd = null;
-			ind  = null;
+			ind = null;
+
+			Console.WriteLine(GetErrorString(error));
+
+			return error;
+		}
+
+		public static int EncodeFile(string @in, string @out, int raw, int version) {
+			int error = SUCCESS;
+			System.IO.FileStream fin = null, fout = null;
+			Console.Write("Encoding[{0:X2}] {1} -> {2}...", version < 0 ? -version : version, @in ?? "", @out ?? "");
+
+			fin = new System.IO.FileStream(@in, System.IO.FileMode.Open, System.IO.FileAccess.Read, System.IO.FileShare.Read);
+
+			if (@out != null) {
+				fout = new System.IO.FileStream(@out, System.IO.FileMode.Create);
+			}
+
+			error = EncodeStream(fin, fout, raw, version);
 
 			if (fout != null) fout.Close();
 			if (fin  != null) fin.Close();
-
-			Console.WriteLine(GetErrorString(error));
 
 			return error;
 		}
