@@ -25,6 +25,7 @@ namespace compto {
 		public static string VERSION = "2.01a";
 		// Modificadores
 		private static int modifier = 0, raw = 0, silent = 0, once = 0;
+		private static bool bigEndian = false;
 
 		private static void show_header_once() {
 			if (once != 0 || silent != 0) return;
@@ -38,6 +39,7 @@ namespace compto {
 			Console.WriteLine("<Modifiers>");
 			Console.WriteLine("  -s silent mode");
 			Console.WriteLine("  -r use raw files");
+			Console.WriteLine("  -e use big endian instead of little endian");
 			Console.WriteLine();
 			Console.WriteLine("<Commands>");
 			Console.WriteLine("  -b <file.out> buffer dump");
@@ -95,6 +97,8 @@ namespace compto {
 
 					// Modo silencioso
 					if (arg == "-s") { silent = 1; /*fclose(stdout);*/ continue; }
+
+					if (arg == "-e") { bigEndian = true; continue; }
 				}
 
 				// Acciones
@@ -135,7 +139,7 @@ namespace compto {
 					switch (action) {
 						case ACTION_ENCODE:
 							if (dparams[0] != dparams[1]) {
-								retval |= complib.EncodeFile(dparams[0], dparams[1], raw, modifier);
+								retval |= complib.EncodeFile(dparams[0], dparams[1], raw, modifier, !bigEndian);
 							} else {
 								Console.WriteLine("Can't use same file for input and output");
 								retval |= -1;
@@ -143,7 +147,7 @@ namespace compto {
 						break;
 						case ACTION_DECODE:
 							if (dparams[0] != dparams[1]) {
-								retval |= complib.DecodeFile(dparams[0], dparams[1], raw, modifier);
+								retval |= complib.DecodeFile(dparams[0], dparams[1], raw, modifier, !bigEndian);
 							} else {
 								Console.WriteLine("Can't use same file for input and output");
 								retval |= -1;
@@ -153,7 +157,7 @@ namespace compto {
 							{
 								temp = arg + ".profile";
 								complib.ProfileStart(temp);
-									retval |= complib.DecodeFile(dparams[0], null, raw, modifier);
+									retval |= complib.DecodeFile(dparams[0], null, raw, modifier, !bigEndian);
 								complib.ProfileEnd();
 							}
 						break;

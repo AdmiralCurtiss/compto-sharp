@@ -314,15 +314,19 @@ namespace compto {
 			return error;
 		}
 
-		private static uint ReadUInt(System.IO.Stream s) {
+		private static uint ReadUInt(System.IO.Stream s, bool littleEndian) {
 			int b1 = s.ReadByte();
 			int b2 = s.ReadByte();
 			int b3 = s.ReadByte();
 			int b4 = s.ReadByte();
-			return (uint)( b4 << 24 | b3 << 16 | b2 << 8 | b1 );
+			if (littleEndian) {
+				return (uint)( b4 << 24 | b3 << 16 | b2 << 8 | b1 );
+			} else {
+				return (uint)( b1 << 24 | b2 << 16 | b3 << 8 | b4 );
+			}
 		}
 
-		public static int DecodeStream(System.IO.Stream fin, System.IO.Stream fout, int raw, int version) {
+		public static int DecodeStream(System.IO.Stream fin, System.IO.Stream fout, int raw, int version, bool littleEndian) {
 			int error = SUCCESS;
 			uint inl, outl;
 			byte[] ind, outd;
@@ -332,8 +336,8 @@ namespace compto {
 				outl = inl * 10;
 			} else {
 				version = fin.ReadByte();
-				inl = ReadUInt(fin);
-				outl = ReadUInt(fin);
+				inl = ReadUInt(fin, littleEndian);
+				outl = ReadUInt(fin, littleEndian);
 				if (PrepareVersion(null, version) != SUCCESS) { error = ERROR_FILE_IN; goto _cleanup; }
 			}
 
@@ -356,7 +360,7 @@ namespace compto {
 			return error;
 		}
 
-		public static int DecodeFile(string @in, string @out, int raw, int version) {
+		public static int DecodeFile(string @in, string @out, int raw, int version, bool littleEndian) {
 			int error = SUCCESS;
 			System.IO.FileStream fin, fout = null;
 
@@ -368,7 +372,7 @@ namespace compto {
 				fout = new System.IO.FileStream(@out, System.IO.FileMode.Create);
 			}
 
-			error = DecodeStream(fin, fout, raw, version);
+			error = DecodeStream(fin, fout, raw, version, littleEndian);
 
 			if (fout != null) fout.Close();
 			if (fin  != null) fin.Close();
@@ -378,18 +382,25 @@ namespace compto {
 			return error;
 		}
 
-		private static void WriteUInt(System.IO.Stream s, uint v) {
+		private static void WriteUInt(System.IO.Stream s, uint v, bool littleEndian) {
 			byte b1 = (byte)(v & 0xFF);
 			byte b2 = (byte)((v >> 8) & 0xFF);
 			byte b3 = (byte)((v >> 16) & 0xFF);
 			byte b4 = (byte)((v >> 24) & 0xFF);
-			s.WriteByte(b1);
-			s.WriteByte(b2);
-			s.WriteByte(b3);
-			s.WriteByte(b4);
+			if (littleEndian) {
+				s.WriteByte(b1);
+				s.WriteByte(b2);
+				s.WriteByte(b3);
+				s.WriteByte(b4);
+			} else {
+				s.WriteByte(b4);
+				s.WriteByte(b3);
+				s.WriteByte(b2);
+				s.WriteByte(b1);
+			}
 		}
 
-		public static int EncodeStream(System.IO.Stream fin, System.IO.Stream fout, int raw, int version) {
+		public static int EncodeStream(System.IO.Stream fin, System.IO.Stream fout, int raw, int version, bool littleEndian) {
 			int error = SUCCESS;
 			uint inl, outl;
 			byte[] ind, outd;
@@ -417,8 +428,8 @@ namespace compto {
 			if (fout != null) {
 				if (raw == 0) {
 					fout.WriteByte((byte)version);
-					WriteUInt(fout, outl);
-					WriteUInt(fout, inl);
+					WriteUInt(fout, outl, littleEndian);
+					WriteUInt(fout, inl, littleEndian);
 				}
 
 				fout.Write(outd, 0, (int)outl);
@@ -432,7 +443,7 @@ namespace compto {
 			return error;
 		}
 
-		public static int EncodeFile(string @in, string @out, int raw, int version) {
+		public static int EncodeFile(string @in, string @out, int raw, int version, bool littleEndian) {
 			int error = SUCCESS;
 			System.IO.FileStream fin = null, fout = null;
 			Console.Write("Encoding[{0:X2}] {1} -> {2}...", version < 0 ? -version : version, @in ?? "", @out ?? "");
@@ -443,7 +454,7 @@ namespace compto {
 				fout = new System.IO.FileStream(@out, System.IO.FileMode.Create);
 			}
 
-			error = EncodeStream(fin, fout, raw, version);
+			error = EncodeStream(fin, fout, raw, version, littleEndian);
 
 			if (fout != null) fout.Close();
 			if (fin  != null) fin.Close();
