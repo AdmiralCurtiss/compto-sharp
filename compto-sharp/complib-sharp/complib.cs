@@ -67,6 +67,7 @@ namespace compto {
 		private static int PrepareVersion(LzState State, int version) {
 			if (State != null) State.T = 2;
 			switch (version) {
+				case 0: break;
 				case 1:  if (State != null) State.F  = 0x12; break;
 				case 3:  if (State != null) State.F  = 0x11; break;
 				default: return ERROR_UNKNOWN_VERSION;
@@ -282,6 +283,13 @@ namespace compto {
 		}
 
 		public static int Decode(int version, byte[] @in, uint inl, byte[] @out, ref uint outl) {
+			if ( version == 0 && inl == outl ) {
+				for ( uint loopidx = 0; loopidx < inl; ++loopidx ) {
+					@out[loopidx] = @in[loopidx];
+				}
+				return SUCCESS;
+			}
+
 			/* pointers! */ int insp = 0, inst = 0, ousp = 0, oust = 0;
 			uint flags = 0, i, j, k, r, c;
 			int error = SUCCESS;
