@@ -1,0 +1,3 @@
+[submodule "compto-sharp/HyoutaUtils"]
+	path = compto-sharp/HyoutaUtils
+	url = https://github.com/AdmiralCurtiss/HyoutaUtils.git
